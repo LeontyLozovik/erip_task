@@ -1,0 +1,65 @@
+[project]
+name = "exchange"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Leontiy Lozovik", email = "leontyloz02@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.1",
+    "fastapi>=0.162.0",
+    "pydantic-settings>=2.16.2",
+    "sqlalchemy>=2.1.8",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+exchange = "exchange:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"alembic/**" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["exchange"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+disallow_untyped_decorators = false
+files = ["src"]
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

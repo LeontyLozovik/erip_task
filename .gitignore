@@ -1,0 +1,72 @@
+# Python standard / Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments (uv / venv)
+.venv/
+venv/
+ENV/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Tools & Testing caches (uv, Ruff, pytest, coverage)
+.uv/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# IDEs & Editors
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sw?
+
+# Database / Storage (Postgres, Redis local volumes & dumps)
+*.sqlite3
+*.db
+postgres_data/
+pgdata/
+redis_data/
+*.rdb
+*.aof
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
