@@ -70,3 +70,6 @@ celerybeat.pid
 .DS_Store?
 ._*
 Thumbs.db
+
+
+logs/
