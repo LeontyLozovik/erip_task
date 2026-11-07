@@ -33,7 +33,7 @@ LOGGING_CONFIG = {
         },
     },
     "loggers": {
-        "exchange_service": {
+        "exchange": {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": False,
@@ -43,4 +43,4 @@ LOGGING_CONFIG = {
 
 logging.config.dictConfig(LOGGING_CONFIG)
 
-api_logger = logging.getLogger("exchange_service")
+api_logger = logging.getLogger("exchange")
