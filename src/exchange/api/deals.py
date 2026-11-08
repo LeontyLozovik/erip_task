@@ -12,10 +12,12 @@ from exchange.api.schemas import (
     NbrbRateSchema,
     ResolveDealSchema,
     ResponseCreateDealSchema,
+    ResponsePendingSchema,
     ResponseResolveDealSchema,
+    StatSchema,
 )
 from exchange.config.db_config import get_session
-from exchange.repo.deal_repo import change_status
+from exchange.repo.deal_repo import change_status, get_pending_deals, get_stat
 from exchange.repo.deal_repo import create_deal as save_deal
 from exchange.repo.rates_repo import get_needed_rates, save_rates
 from exchange.services import convert, get_rate_dto
@@ -43,7 +45,7 @@ async def get_rates(session: DbSession) -> dict[str, str]:
     return {"message": "Rates saved successfully"}
 
 
-@router.post("/create")
+@router.post("/create", response_model=ResponseCreateDealSchema)
 async def create_deal(data: CreateDealSchema, session: DbSession) -> ResponseCreateDealSchema:
     rates = await get_needed_rates(data.currency_source, data.currency_target, session)
     source_rate_dto = get_rate_dto(data.currency_source, rates)
@@ -59,11 +61,12 @@ async def resolve_deal(data: ResolveDealSchema, session: DbSession) -> ResponseR
     return ResponseResolveDealSchema.model_validate(deal)
 
 
-@router.get("/stat/")
-async def get_stat() -> None:
-    pass
+@router.get("/stat")
+async def stat(data: StatSchema, session: DbSession) -> None:
+    statistic = await get_stat(data, session)
 
 
 @router.get("/pending")
-async def get_pending_deals() -> None:
-    pass
+async def pending_deals(session: DbSession) -> list[ResponsePendingSchema]:
+    deals = await get_pending_deals(session)
+    return [ResponsePendingSchema.model_validate(deal) for deal in deals]

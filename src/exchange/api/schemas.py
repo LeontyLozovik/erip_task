@@ -75,8 +75,21 @@ class NbrbRateSchema(BaseModel):
 
 
 class ResolveDealSchema(BaseModel):
-    deal_id: int
-    requested_status: DealStatus
+    deal_id: Annotated[int, Field(gt=0, description="Deal id", example=1)]
+    requested_status: Annotated[
+        DealStatus,
+        Field(
+            description="Accept or reject deal",
+            example="completed or failed",
+        ),
+    ]
+
+    @field_validator("requested_status")
+    @classmethod
+    def validate_requested_status(cls, value: DealStatus) -> DealStatus:
+        if value not in (DealStatus.COMPLETED, DealStatus.FAILED):
+            raise ValueError("Status must be 'completed' or 'failed' only")
+        return value
 
 
 class ResponseResolveDealSchema(BaseModel):
@@ -87,9 +100,36 @@ class ResponseResolveDealSchema(BaseModel):
 
 
 class StatSchema(BaseModel):
-    date_start: datetime
-    date_end: datetime
-    total_deals: int
-    total_amount_source: float
-    total_amount_target: float
-    total_rate: float
+    start_date: Annotated[
+        datetime, Field(description="Start date", examples=["2026-01-01T00:00:00Z"])
+    ]
+    end_date: Annotated[datetime, Field(description="End date", examples=["2026-01-01T00:00:00Z"])]
+    currency: Annotated[
+        str | None,
+        StringConstraints(min_length=3, max_length=3),
+        Field(description="ISO 4217 currency code", example="USD"),
+    ] = None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> Self:
+        if self.end_date >= self.start_date:
+            raise ValueError("start_date should be less then end_date")
+        return self
+
+
+class ResponseStatSchema(BaseModel):
+    currency: str
+    total_in: Decimal
+    total_out: Decimal
+    deals_count: int
+
+
+class ResponsePendingSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    amount_source: Decimal
+    amount_target: Decimal
+    currency_source: str
+    currency_target: str
+    rate: Decimal
