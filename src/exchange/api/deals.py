@@ -17,8 +17,8 @@ from exchange.api.schemas import (
 from exchange.config.db_config import get_session
 from exchange.repo.deal_repo import change_status
 from exchange.repo.deal_repo import create_deal as save_deal
-from exchange.repo.rates_repo import get_rate_data, save_rates
-from exchange.services import calculate_amount_target
+from exchange.repo.rates_repo import get_needed_rates, save_rates
+from exchange.services import convert, get_rate_dto
 
 router = APIRouter()
 
@@ -45,9 +45,11 @@ async def get_rates(session: DbSession) -> dict[str, str]:
 
 @router.post("/create")
 async def create_deal(data: CreateDealSchema, session: DbSession) -> ResponseCreateDealSchema:
-    rate_data = await get_rate_data(data.currency_source, session)
-    amount_target = calculate_amount_target(data.amount_source, rate_data.rate)
-    deal = await save_deal(data, rate_data, amount_target, session)
+    rates = await get_needed_rates(data.currency_source, data.currency_target, session)
+    source_rate_dto = get_rate_dto(data.currency_source, rates)
+    target_rate_dto = get_rate_dto(data.currency_target, rates)
+    amount_target, calculated_rate = convert(data.amount_source, source_rate_dto, target_rate_dto)
+    deal = await save_deal(data, calculated_rate, amount_target, session)
     return ResponseCreateDealSchema.model_validate(deal)
 
 

@@ -56,7 +56,9 @@ class ResponseCreateDealSchema(BaseModel):
 class RateDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    rate: Decimal
+    official_rate: Decimal
+    scale: int
+    currency: str = Field(validation_alias="abbreviation")
     rate_date: datetime
 
 

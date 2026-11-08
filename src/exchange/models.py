@@ -55,9 +55,9 @@ class Deal(Base):
     currency_source: Mapped[str] = mapped_column(String(3), nullable=False)
     currency_target: Mapped[str] = mapped_column(String(3), nullable=False)
     rate: Mapped[float] = mapped_column(Numeric[Decimal], nullable=False)
-    rate_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    # rate_date: Mapped[datetime] = mapped_column(
+    #     DateTime(timezone=True), nullable=False, server_default=func.now()
+    # )
     status: Mapped[DealStatus] = mapped_column(
         Enum(DealStatus, native_enum=False), nullable=False, default=DealStatus.PENDING
     )

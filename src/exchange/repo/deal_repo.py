@@ -4,28 +4,27 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from exchange.api.schemas import CreateDealSchema, RateDTO, ResolveDealSchema
+from exchange.api.schemas import CreateDealSchema, ResolveDealSchema
 from exchange.config.loggers import api_logger
 from exchange.models import Deal
 
 
 async def create_deal(
-    data: CreateDealSchema, rate_dto: RateDTO, amount_target: Decimal, session: AsyncSession
+    data: CreateDealSchema, calculated_rate: Decimal, amount_target: Decimal, session: AsyncSession
 ) -> Deal:
     new_deal = Deal(
         amount_source=data.amount_source,
         amount_target=amount_target,
         currency_source=data.currency_source,
         currency_target=data.currency_target,
-        rate=rate_dto.rate,
-        rate_date=rate_dto.rate_date,
+        rate=calculated_rate,
     )
     session.add(new_deal)
     try:
         await session.commit()
         await session.refresh(new_deal)
         api_logger.info(
-            f"Deal created successfully. id:{new_deal.id} amount_source:{new_deal.amount_source} amount_target:{new_deal.amount_target} currency_source:{new_deal.currency_source} currency_target:{new_deal.currency_target} rate:{new_deal.rate} rate_date:{new_deal.rate_date}"
+            f"Deal created successfully. id:{new_deal.id} amount_source:{new_deal.amount_source} amount_target:{new_deal.amount_target} currency_source:{new_deal.currency_source} currency_target:{new_deal.currency_target} rate:{new_deal.rate}"
         )
         return new_deal
     except SQLAlchemyError as e:
