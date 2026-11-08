@@ -25,5 +25,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1
 
 COPY --from=build /app/.venv /app/.venv
+COPY alembic.ini ./
+COPY migrations ./migrations
+COPY scripts/entrypoint.sh ./
 
 EXPOSE 8000
