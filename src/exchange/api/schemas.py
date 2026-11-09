@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Annotated, Self
 
@@ -110,10 +110,32 @@ class StatSchema(BaseModel):
         Field(description="ISO 4217 currency code", example="USD"),
     ] = None
 
+    @field_validator("currency")
+    @classmethod
+    def validate_iso_currency(cls, currency: str | None) -> str | None:
+        if currency is None:
+            return currency
+        currency_upper = currency.upper()
+        if not pycountry.currencies.get(alpha_3=currency_upper):
+            raise ValueError(f"Currency '{currency_upper}' not found in ISO 4217 or is invalid")
+        return currency_upper
+
+    @field_validator("end_date", mode="before")
+    @classmethod
+    def set_end_of_day(cls, value: object) -> object:
+        if isinstance(value, str):
+            raw = value.strip()
+            if "T" not in raw and " " not in raw and ":" not in raw:
+                day = date.fromisoformat(raw)
+                return datetime.combine(day, time.max)
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return datetime.combine(value, time.max)
+        return value
+
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
-        if self.end_date >= self.start_date:
-            raise ValueError("start_date should be less then end_date")
+        if self.end_date < self.start_date:
+            raise ValueError("end_date should be greater or equal then start_date")
         return self
 
 

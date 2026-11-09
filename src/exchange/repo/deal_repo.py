@@ -1,11 +1,12 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, literal, or_, select, union_all
+from sqlalchemy import RowMapping, func, literal, or_, select, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from exchange.api.schemas import CreateDealSchema, ResolveDealSchema, ResponseStatSchema, StatSchema
+from exchange.api.schemas import CreateDealSchema, ResolveDealSchema, StatSchema
 from exchange.config.loggers import api_logger
 from exchange.models import Deal, DealStatus
 
@@ -54,7 +55,7 @@ async def change_status(data: ResolveDealSchema, session: AsyncSession) -> Deal:
         raise
 
 
-async def get_stat(data: StatSchema, session: AsyncSession) -> list[Deal]:
+async def get_stat(data: StatSchema, session: AsyncSession) -> Sequence[RowMapping]:
     filters = [
         Deal.status == DealStatus.COMPLETED,
         Deal.resolved_at >= data.start_date,
@@ -69,38 +70,35 @@ async def get_stat(data: StatSchema, session: AsyncSession) -> list[Deal]:
             )
         )
 
-    # 1. Поток: валюта пришла в кассу (source)
-    inflow = select(
+    income = select(
         Deal.currency_source.label("currency"),
         Deal.amount_source.label("amount_in"),
         literal(Decimal("0")).label("amount_out"),
         Deal.id.label("deal_id"),
     ).where(*filters)
 
-    # 2. Поток: валюта ушла из кассы (target)
-    outflow = select(
+    outcome = select(
         Deal.currency_target.label("currency"),
         literal(Decimal("0")).label("amount_in"),
         Deal.amount_target.label("amount_out"),
         Deal.id.label("deal_id"),
     ).where(*filters)
 
-    flows = union_all(inflow, outflow).subquery()
+    all_deals = union_all(income, outcome).subquery()
 
     query = (
         select(
-            flows.c.currency,
-            func.sum(flows.c.amount_in).label("total_in"),
-            func.sum(flows.c.amount_out).label("total_out"),
-            func.count(func.distinct(flows.c.deal_id)).label("deals_count"),
+            all_deals.c.currency,
+            func.sum(all_deals.c.amount_in).label("total_in"),
+            func.sum(all_deals.c.amount_out).label("total_out"),
+            func.count(func.distinct(all_deals.c.deal_id)).label("deals_count"),
         )
-        .group_by(flows.c.currency)
-        .order_by(flows.c.currency)
+        .group_by(all_deals.c.currency)
+        .order_by(all_deals.c.currency)
     )
 
     result = await session.execute(query)
-    # stat = list(result.all())
-    return [ResponseStatSchema.model_validate(row._mapping) for row in result.all()]
+    return result.mappings().all()
 
 
 async def get_pending_deals(session: AsyncSession) -> list[Deal]:

@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated
 
 import aiohttp
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from exchange.api.schemas import (
     ResponseCreateDealSchema,
     ResponsePendingSchema,
     ResponseResolveDealSchema,
+    ResponseStatSchema,
     StatSchema,
 )
 from exchange.config.db_config import get_session
@@ -62,8 +63,11 @@ async def resolve_deal(data: ResolveDealSchema, session: DbSession) -> ResponseR
 
 
 @router.get("/stat")
-async def stat(data: StatSchema, session: DbSession) -> None:
+async def stat(
+    data: Annotated[StatSchema, Query()], session: DbSession
+) -> list[ResponseStatSchema]:
     statistic = await get_stat(data, session)
+    return [ResponseStatSchema.model_validate(row) for row in statistic]
 
 
 @router.get("/pending")
