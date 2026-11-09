@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from exchange.api.schemas import (
     CreateDealSchema,
+    ErrorSchema,
     ResolveDealSchema,
     ResponseCreateDealSchema,
     ResponsePendingSchema,
@@ -23,7 +24,12 @@ router = APIRouter()
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 
 
-@router.post("/create", response_model=ResponseCreateDealSchema)
+@router.post(
+    "/create",
+    response_model=ResponseCreateDealSchema,
+    summary="Create currency exchange deal",
+    responses={404: {"model": ErrorSchema, "description": "Exchange rate was not found"}},
+)
 async def create_deal(data: CreateDealSchema, session: DbSession) -> ResponseCreateDealSchema:
     rates = await get_needed_rates(data.currency_source, data.currency_target, session)
     source_rate_dto = get_rate_dto(data.currency_source, rates)
@@ -33,13 +39,25 @@ async def create_deal(data: CreateDealSchema, session: DbSession) -> ResponseCre
     return ResponseCreateDealSchema.model_validate(deal)
 
 
-@router.post("/resolve")
+@router.post(
+    "/resolve",
+    response_model=ResponseResolveDealSchema,
+    summary="Accept or reject pending deal",
+    responses={
+        404: {"model": ErrorSchema, "description": "Deal was not found"},
+        409: {"model": ErrorSchema, "description": "Deal is already resolved"},
+    },
+)
 async def resolve_deal(data: ResolveDealSchema, session: DbSession) -> ResponseResolveDealSchema:
     deal = await change_status(data, session)
     return ResponseResolveDealSchema.model_validate(deal)
 
 
-@router.get("/stat")
+@router.get(
+    "/stat",
+    response_model=list[ResponseStatSchema],
+    summary="Aggregated cash desk totals for a period",
+)
 async def stat(
     data: Annotated[StatSchema, Query()], session: DbSession
 ) -> list[ResponseStatSchema]:
@@ -47,7 +65,11 @@ async def stat(
     return [ResponseStatSchema.model_validate(row) for row in statistic]
 
 
-@router.get("/pending")
+@router.get(
+    "/pending",
+    response_model=list[ResponsePendingSchema],
+    summary="List of pending deals",
+)
 async def pending_deals(session: DbSession) -> list[ResponsePendingSchema]:
     deals = await get_pending_deals(session)
     return [ResponsePendingSchema.model_validate(deal) for deal in deals]

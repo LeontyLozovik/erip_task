@@ -18,17 +18,18 @@ from exchange.models import DealStatus
 
 class CreateDealSchema(BaseModel):
     amount_source: Annotated[
-        Decimal, Field(gt=0, description="Amount of source currency", example=100)
+        Decimal,
+        Field(gt=0, description="Amount of source currency", examples=["100.00"]),
     ]
     currency_source: Annotated[
         str,
         StringConstraints(min_length=3, max_length=3),
-        Field(description="ISO 4217 currency code", example="USD"),
+        Field(description="ISO 4217 source currency code", examples=["USD"]),
     ]
     currency_target: Annotated[
         str,
         StringConstraints(min_length=3, max_length=3),
-        Field(description="ISO 4217 currency code", example="BYN"),
+        Field(description="ISO 4217 target currency code", examples=["BYN"]),
     ]
 
     @field_validator("currency_source", "currency_target")
@@ -49,9 +50,13 @@ class CreateDealSchema(BaseModel):
 class ResponseCreateDealSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    amount_target: Decimal
-    rate: Decimal
+    id: Annotated[int, Field(description="Deal id", examples=[1])]
+    amount_target: Annotated[
+        Decimal, Field(description="Amount in the target currency", examples=["100.00"])
+    ]
+    rate: Annotated[
+        Decimal, Field(description="Exchange rate from source to target", examples=["3.0248"])
+    ]
 
 
 class RateDTO(BaseModel):
@@ -83,21 +88,24 @@ class DealResolution(StrEnum):
 
 
 class ResolveDealSchema(BaseModel):
-    deal_id: Annotated[int, Field(gt=0, description="Deal id", example=1)]
+    deal_id: Annotated[int, Field(gt=0, description="Deal id", examples=[1])]
     requested_status: Annotated[
         DealResolution,
-        Field(
-            description="Accept or reject deal",
-            example="accept",
-        ),
+        Field(description="Accept or reject the deal", examples=["accept"]),
     ]
 
 
 class ResponseResolveDealSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    status: DealStatus
+    id: Annotated[int, Field(description="Deal id", examples=[1])]
+    status: Annotated[
+        DealStatus, Field(description="Deal status after resolution", examples=["completed"])
+    ]
+
+
+class ErrorSchema(BaseModel):
+    detail: Annotated[str, Field(description="Error message", examples=["Deal not found"])]
 
 
 class StatSchema(BaseModel):
@@ -108,7 +116,10 @@ class StatSchema(BaseModel):
     currency: Annotated[
         str | None,
         StringConstraints(min_length=3, max_length=3),
-        Field(description="ISO 4217 currency code", example="USD"),
+        Field(
+            description="ISO 4217 currency code",
+            examples=["USD"],
+        ),
     ] = None
 
     @field_validator("currency")
@@ -141,18 +152,26 @@ class StatSchema(BaseModel):
 
 
 class ResponseStatSchema(BaseModel):
-    currency: str
-    total_in: Decimal
-    total_out: Decimal
-    deals_count: int
+    currency: Annotated[str, Field(description="Currency code", examples=["USD"])]
+    total_in: Annotated[
+        Decimal, Field(description="Amount received into the cash desk", examples=["100.00"])
+    ]
+    total_out: Annotated[
+        Decimal, Field(description="Amount paid out of the cash desk", examples=["50.00"])
+    ]
+    deals_count: Annotated[int, Field(description="Number of completed deals", examples=[2])]
 
 
 class ResponsePendingSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    amount_source: Decimal
-    amount_target: Decimal
-    currency_source: str
-    currency_target: str
-    rate: Decimal
+    id: Annotated[int, Field(description="Deal id", examples=[1])]
+    amount_source: Annotated[
+        Decimal, Field(description="Amount in the source currency", examples=["100.00"])
+    ]
+    amount_target: Annotated[
+        Decimal, Field(description="Amount in the target currency", examples=["300.00"])
+    ]
+    currency_source: Annotated[str, Field(description="Source currency code", examples=["USD"])]
+    currency_target: Annotated[str, Field(description="Target currency code", examples=["BYN"])]
+    rate: Annotated[Decimal, Field(description="Exchange rate", examples=["3.0000"])]

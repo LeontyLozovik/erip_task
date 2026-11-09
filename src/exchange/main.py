@@ -29,5 +29,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     api_logger.info("Application stopped")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="Currency exchange",
+    description="Exchange deals, NBRB rates, and cash desk statistics.",
+    lifespan=lifespan,
+)
 app.include_router(router)
