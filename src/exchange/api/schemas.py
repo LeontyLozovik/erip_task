@@ -110,9 +110,11 @@ class ErrorSchema(BaseModel):
 
 class StatSchema(BaseModel):
     start_date: Annotated[
-        datetime, Field(description="Start date", examples=["2026-01-01T00:00:00Z"])
+        datetime, Field(description="Start date (DD.MM.YYYY)", examples=["01.01.2026"])
     ]
-    end_date: Annotated[datetime, Field(description="End date", examples=["2026-01-01T00:00:00Z"])]
+    end_date: Annotated[
+        datetime, Field(description="End date (DD.MM.YYYY)", examples=["01.01.2026"])
+    ]
     currency: Annotated[
         str | None,
         StringConstraints(min_length=3, max_length=3),
@@ -132,14 +134,30 @@ class StatSchema(BaseModel):
             raise ValueError(f"Currency '{currency_upper}' not found in ISO 4217 or is invalid")
         return currency_upper
 
+    @field_validator("start_date", mode="before")
+    @classmethod
+    def set_start_of_day(cls, value: object) -> object:
+        if isinstance(value, str):
+            raw = value.strip()
+            try:
+                parsed_date = datetime.strptime(raw, "%d.%m.%Y").date()
+                return datetime.combine(parsed_date, time.min)
+            except ValueError as e:
+                raise ValueError("Date should be in dd.mm.yyyy format") from e
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return datetime.combine(value, time.min)
+        return value
+
     @field_validator("end_date", mode="before")
     @classmethod
     def set_end_of_day(cls, value: object) -> object:
         if isinstance(value, str):
             raw = value.strip()
-            if "T" not in raw and " " not in raw and ":" not in raw:
-                day = date.fromisoformat(raw)
-                return datetime.combine(day, time.max)
+            try:
+                parsed_date = datetime.strptime(raw, "%d.%m.%Y").date()
+                return datetime.combine(parsed_date, time.max)
+            except ValueError as e:
+                raise ValueError("Date should be in dd.mm.yyyy format") from e
         if isinstance(value, date) and not isinstance(value, datetime):
             return datetime.combine(value, time.max)
         return value

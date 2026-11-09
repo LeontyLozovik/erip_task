@@ -48,7 +48,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("cur_id", sa.Integer(), nullable=False),
         sa.Column("code", sa.String(length=3), nullable=False),
-        sa.Column("rate_date", sa.DateTime(), nullable=False),
         sa.Column("abbreviation", sa.String(length=3), nullable=False),
         sa.Column("scale", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=128), nullable=False),
