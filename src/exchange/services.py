@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import aiohttp
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from exchange.api.schemas import NbrbRateSchema, RateDTO
 from exchange.config.db_config import AsyncSessionFabric
@@ -13,22 +13,35 @@ from exchange.repo.rates_repo import save_rates
 
 
 async def load_daily_rates() -> None:
-    timeout = aiohttp.ClientTimeout(total=30)
-    async with (
-        aiohttp.ClientSession(timeout=timeout) as client,
-        client.get(
-            "https://api.nbrb.by/exrates/rates",
-            params={"periodicity": 0},
-        ) as response,
-    ):
-        response.raise_for_status()
-        text = await response.text()
-    api_logger.info("Daily rates loaded")
-    payload = json.loads(text, parse_float=Decimal)
-    rates = TypeAdapter(list[NbrbRateSchema]).validate_python(payload)
+    try:
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as client,
+            client.get(
+                "https://api.nbrb.by/exrates/rates",
+                params={"periodicity": 0},
+            ) as response,
+        ):
+            response.raise_for_status()
+            text = await response.text()
+    except (aiohttp.ClientError, TimeoutError) as e:
+        api_logger.error(f"Failed to fetch NBRB rates: {e}")
+        raise
+
+    try:
+        payload = json.loads(text, parse_float=Decimal)
+        rates = TypeAdapter(list[NbrbRateSchema]).validate_python(payload)
+    except (json.JSONDecodeError, ValidationError) as e:
+        api_logger.error(f"Invalid NBRB rates payload: {e}")
+        raise
+
+    if not rates:
+        api_logger.warning("NBRB returned no rates")
+        return
+
+    api_logger.info("Successfuly fetch NBRB rates")
     async with AsyncSessionFabric() as session:
         await save_rates(rates, session)
-    api_logger.info("Daily rates saved")
 
 
 def get_rate_dto(currency: str, rates: dict[str, Rate]) -> RateDTO:

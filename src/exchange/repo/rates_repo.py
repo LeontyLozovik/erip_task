@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
@@ -42,6 +43,7 @@ async def get_needed_rates(
                 api_logger.error(f"Failed to get rate for {rate_abbr}: {e}")
                 raise
             if rate_row is None:
-                raise ValueError(f"No rate for {rate_abbr}")
+                api_logger.error(f"No rate for {rate_abbr}")
+                raise HTTPException(status_code=404, detail=f"No rate for {rate_abbr}")
             result_rates[rate_abbr] = rate_row
     return result_rates

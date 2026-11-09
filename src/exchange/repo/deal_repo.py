@@ -105,12 +105,19 @@ async def get_stat(data: StatSchema, session: AsyncSession) -> Sequence[RowMappi
         .order_by(all_deals.c.currency)
     )
 
-    result = await session.execute(query)
+    try:
+        result = await session.execute(query)
+    except SQLAlchemyError as e:
+        api_logger.error(f"Failed to get deal statistics: {e}")
+        raise
     return result.mappings().all()
 
 
 async def get_pending_deals(session: AsyncSession) -> list[Deal]:
     query = select(Deal).where(Deal.status == DealStatus.PENDING)
-    result = await session.scalars(query)
-    deals = list(result.all())
-    return deals
+    try:
+        result = await session.scalars(query)
+    except SQLAlchemyError as e:
+        api_logger.error(f"Failed to get pending deals: {e}")
+        raise
+    return list(result.all())
