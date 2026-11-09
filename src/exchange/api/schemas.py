@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 from decimal import Decimal
+from enum import StrEnum
 from typing import Annotated, Self
 
 import pycountry
@@ -65,31 +66,31 @@ class RateDTO(BaseModel):
 class NbrbRateSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    cur_id: Annotated[int, Field(alias="Cur_ID")]
-    code: Annotated[str, Field(alias="Cur_Code")]
+    cur_id: Annotated[int, Field(alias="Cur_ID", gt=0)]
+    code: Annotated[str, Field(alias="Cur_Code", pattern=r"^[0-9]{3}$")]
     rate_date: Annotated[datetime, Field(alias="Date")]
-    abbreviation: Annotated[str, Field(alias="Cur_Abbreviation")]
+    abbreviation: Annotated[str, Field(alias="Cur_Abbreviation", pattern=r"^[A-Z]{3}$")]
     scale: Annotated[int, Field(alias="Cur_Scale", gt=0)]
-    name: Annotated[str, Field(alias="Cur_Name", max_length=128)]
-    official_rate: Annotated[Decimal, Field(alias="Cur_OfficialRate", gt=0)]
+    name: Annotated[str, Field(alias="Cur_Name", min_length=1, max_length=128)]
+    official_rate: Annotated[
+        Decimal, Field(alias="Cur_OfficialRate", gt=0, max_digits=18, decimal_places=4)
+    ]
+
+
+class DealResolution(StrEnum):
+    ACCEPT = "accept"
+    REJECT = "reject"
 
 
 class ResolveDealSchema(BaseModel):
     deal_id: Annotated[int, Field(gt=0, description="Deal id", example=1)]
     requested_status: Annotated[
-        DealStatus,
+        DealResolution,
         Field(
             description="Accept or reject deal",
-            example="completed or failed",
+            example="accept",
         ),
     ]
-
-    @field_validator("requested_status")
-    @classmethod
-    def validate_requested_status(cls, value: DealStatus) -> DealStatus:
-        if value not in (DealStatus.COMPLETED, DealStatus.FAILED):
-            raise ValueError("Status must be 'completed' or 'failed' only")
-        return value
 
 
 class ResponseResolveDealSchema(BaseModel):

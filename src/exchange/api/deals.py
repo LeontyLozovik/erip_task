@@ -33,7 +33,7 @@ async def create_deal(data: CreateDealSchema, session: DbSession) -> ResponseCre
     return ResponseCreateDealSchema.model_validate(deal)
 
 
-@router.post("/{deal_id}/resolve")
+@router.post("/resolve")
 async def resolve_deal(data: ResolveDealSchema, session: DbSession) -> ResponseResolveDealSchema:
     deal = await change_status(data, session)
     return ResponseResolveDealSchema.model_validate(deal)

@@ -1,7 +1,7 @@
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import insert
 
 from exchange.api.schemas import NbrbRateSchema
 from exchange.config.loggers import api_logger
@@ -10,7 +10,7 @@ from exchange.models import Rate
 
 async def save_rates(rates: list[NbrbRateSchema], session: AsyncSession) -> None:
     rows = [rate.model_dump() for rate in rates]
-    query = insert(Rate).values(rows)
+    query = insert(Rate).values(rows).on_conflict_do_nothing(constraint="uq_abbreviation_rate_date")
     try:
         await session.execute(query)
         await session.commit()

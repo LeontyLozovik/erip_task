@@ -2,11 +2,12 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import RowMapping, func, literal, or_, select, union_all
+from fastapi import HTTPException
+from sqlalchemy import RowMapping, func, literal, select, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from exchange.api.schemas import CreateDealSchema, ResolveDealSchema, StatSchema
+from exchange.api.schemas import CreateDealSchema, DealResolution, ResolveDealSchema, StatSchema
 from exchange.config.loggers import api_logger
 from exchange.models import Deal, DealStatus
 
@@ -35,13 +36,22 @@ async def create_deal(
         raise
 
 
+RESOLVED_STATUS = {
+    DealResolution.ACCEPT: DealStatus.COMPLETED,
+    DealResolution.REJECT: DealStatus.FAILED,
+}
+
+
 async def change_status(data: ResolveDealSchema, session: AsyncSession) -> Deal:
     query = select(Deal).where(Deal.id == data.deal_id).with_for_update()
     deal = await session.scalar(query)
     if not deal:
         api_logger.error(f"Deal with id {data.deal_id} not found")
-        raise ValueError(f"Deal with id {data.deal_id} not found")
-    deal.status = data.requested_status
+        raise HTTPException(status_code=404, detail="Deal not found")
+    if deal.status != DealStatus.PENDING:
+        api_logger.error(f"Deal with id {data.deal_id} is already resolved")
+        raise HTTPException(status_code=409, detail="Deal is already resolved")
+    deal.status = RESOLVED_STATUS[data.requested_status]
     deal.resolved_at = datetime.now(UTC)
 
     try:
@@ -62,27 +72,25 @@ async def get_stat(data: StatSchema, session: AsyncSession) -> Sequence[RowMappi
         Deal.resolved_at <= data.end_date,
     ]
 
+    income_filter = list(filters)
+    outcome_filter = list(filters)
     if data.currency:
-        filters.append(
-            or_(
-                Deal.currency_source == data.currency,
-                Deal.currency_target == data.currency,
-            )
-        )
+        income_filter.append(Deal.currency_source == data.currency)
+        outcome_filter.append(Deal.currency_target == data.currency)
 
     income = select(
         Deal.currency_source.label("currency"),
         Deal.amount_source.label("amount_in"),
         literal(Decimal("0")).label("amount_out"),
         Deal.id.label("deal_id"),
-    ).where(*filters)
+    ).where(*income_filter)
 
     outcome = select(
         Deal.currency_target.label("currency"),
         literal(Decimal("0")).label("amount_in"),
         Deal.amount_target.label("amount_out"),
         Deal.id.label("deal_id"),
-    ).where(*filters)
+    ).where(*outcome_filter)
 
     all_deals = union_all(income, outcome).subquery()
 
