@@ -1,8 +1,34 @@
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from exchange.api.schemas import RateDTO
+import aiohttp
+from pydantic import TypeAdapter
+
+from exchange.api.schemas import NbrbRateSchema, RateDTO
+from exchange.config.db_config import AsyncSessionFabric
+from exchange.config.loggers import api_logger
 from exchange.models import Rate
+from exchange.repo.rates_repo import save_rates
+
+
+async def load_daily_rates() -> None:
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with (
+        aiohttp.ClientSession(timeout=timeout) as client,
+        client.get(
+            "https://api.nbrb.by/exrates/rates",
+            params={"periodicity": 0},
+        ) as response,
+    ):
+        response.raise_for_status()
+        text = await response.text()
+    api_logger.info("Daily rates loaded")
+    payload = json.loads(text, parse_float=Decimal)
+    rates = TypeAdapter(list[NbrbRateSchema]).validate_python(payload)
+    async with AsyncSessionFabric() as session:
+        await save_rates(rates, session)
+    api_logger.info("Daily rates saved")
 
 
 def get_rate_dto(currency: str, rates: dict[str, Rate]) -> RateDTO:

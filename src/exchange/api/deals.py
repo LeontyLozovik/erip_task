@@ -1,15 +1,10 @@
-import json
-from decimal import Decimal
 from typing import Annotated
 
-import aiohttp
 from fastapi import APIRouter, Depends, Query
-from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from exchange.api.schemas import (
     CreateDealSchema,
-    NbrbRateSchema,
     ResolveDealSchema,
     ResponseCreateDealSchema,
     ResponsePendingSchema,
@@ -20,30 +15,12 @@ from exchange.api.schemas import (
 from exchange.config.db_config import get_session
 from exchange.repo.deal_repo import change_status, get_pending_deals, get_stat
 from exchange.repo.deal_repo import create_deal as save_deal
-from exchange.repo.rates_repo import get_needed_rates, save_rates
+from exchange.repo.rates_repo import get_needed_rates
 from exchange.services import convert, get_rate_dto
 
 router = APIRouter()
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
-
-
-@router.post("/rates")
-async def get_rates(session: DbSession) -> dict[str, str]:
-    timeout = aiohttp.ClientTimeout(total=30)
-    async with (
-        aiohttp.ClientSession(timeout=timeout) as client,
-        client.get(
-            "https://api.nbrb.by/exrates/rates",
-            params={"periodicity": 0},
-        ) as response,
-    ):
-        response.raise_for_status()
-        text = await response.text()
-    payload = json.loads(text, parse_float=Decimal)
-    rates = TypeAdapter(list[NbrbRateSchema]).validate_python(payload)
-    await save_rates(rates, session)
-    return {"message": "Rates saved successfully"}
 
 
 @router.post("/create", response_model=ResponseCreateDealSchema)
