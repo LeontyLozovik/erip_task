@@ -1,6 +1,6 @@
 import json
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 import aiohttp
 from pydantic import TypeAdapter, ValidationError
@@ -57,8 +57,11 @@ def get_rate_dto(currency: str, rates: dict[str, Rate]) -> RateDTO:
 
 
 def convert(amount_source: Decimal, source: RateDTO, target: RateDTO) -> tuple[Decimal, Decimal]:
-    calculated_rate = (source.official_rate / Decimal(source.scale)) / (
-        target.official_rate / Decimal(target.scale)
+    calculated_rate = (
+        (source.official_rate / Decimal(source.scale))
+        / (target.official_rate / Decimal(target.scale))
+    ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    amount_target = (amount_source * calculated_rate).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
     )
-    amount_target = amount_source * calculated_rate
     return (amount_target, calculated_rate)

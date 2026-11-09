@@ -1,5 +1,5 @@
 from datetime import date, datetime, time
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 from typing import Annotated, Self
 
@@ -8,6 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PlainSerializer,
     StringConstraints,
     field_validator,
     model_validator,
@@ -169,13 +170,23 @@ class StatSchema(BaseModel):
         return self
 
 
+def serialize_decimal(value: Decimal) -> str:
+    return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+
+
+JsonDecimal = Annotated[
+    Decimal,
+    PlainSerializer(serialize_decimal, return_type=str, when_used="json"),
+]
+
+
 class ResponseStatSchema(BaseModel):
     currency: Annotated[str, Field(description="Currency code", examples=["USD"])]
     total_in: Annotated[
-        Decimal, Field(description="Amount received into the cash desk", examples=["100.00"])
+        JsonDecimal, Field(description="Amount received into the cash desk", examples=["100.00"])
     ]
     total_out: Annotated[
-        Decimal, Field(description="Amount paid out of the cash desk", examples=["50.00"])
+        JsonDecimal, Field(description="Amount paid out of the cash desk", examples=["50.00"])
     ]
     deals_count: Annotated[int, Field(description="Number of completed deals", examples=[2])]
 
