@@ -1,10 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
 
-from exchange.api.schemas import CreateDealSchema, NbrbRateSchema, ResponseStatSchema, StatSchema
+from exchange.api.schemas import (
+    CreateDealSchema,
+    NbrbRateSchema,
+    ResponseCreateDealSchema,
+    ResponseStatSchema,
+    StatSchema,
+)
 
 
 def test_currency() -> None:
@@ -38,7 +45,7 @@ def test_bad_deal(amount: str, source: str, target: str) -> None:
 def test_stat_date() -> None:
     period = StatSchema(start_date="01.01.2026", end_date="01.01.2026", currency="usd")
 
-    assert period.start_date == datetime(2026, 1, 1)
+    assert period.start_date == datetime(2026, 1, 1, tzinfo=ZoneInfo("Europe/Minsk"))
     assert period.currency == "USD"
 
 
@@ -83,3 +90,12 @@ def test_money() -> None:
 
     assert data["total_in"] == "1000000.00"
     assert data["total_out"] == "0.00"
+
+    deal = ResponseCreateDealSchema(
+        id=1,
+        amount_target=Decimal("1.00E+6"),
+        rate=Decimal("8.18804E+1"),
+    )
+    body = deal.model_dump(mode="json")
+    assert body["amount_target"] == "1000000.00"
+    assert body["rate"] == "81.8804"

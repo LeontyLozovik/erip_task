@@ -15,7 +15,10 @@ scheduler = AsyncIOScheduler(timezone="Europe/Minsk")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     api_logger.info("Starting the application")
-    await load_daily_rates()
+    try:
+        await load_daily_rates()
+    except Exception:
+        api_logger.error("Starting without a fresh NBRB snapshot")
     scheduler.add_job(
         load_daily_rates,
         CronTrigger(hour=6, minute=00, timezone="Europe/Minsk"),

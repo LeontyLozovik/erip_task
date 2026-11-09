@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 from typing import Annotated, Self
+from zoneinfo import ZoneInfo
 
 import pycountry
 from pydantic import (
@@ -15,6 +16,26 @@ from pydantic import (
 )
 
 from exchange.models import DealStatus
+
+MINSK = ZoneInfo("Europe/Minsk")
+
+
+def serialize_decimal(value: Decimal) -> str:
+    return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+
+
+def serialize_rate(value: Decimal) -> str:
+    return format(value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP), "f")
+
+
+JsonDecimal = Annotated[
+    Decimal,
+    PlainSerializer(serialize_decimal, return_type=str, when_used="json"),
+]
+JsonRate = Annotated[
+    Decimal,
+    PlainSerializer(serialize_rate, return_type=str, when_used="json"),
+]
 
 
 class CreateDealSchema(BaseModel):
@@ -53,10 +74,10 @@ class ResponseCreateDealSchema(BaseModel):
 
     id: Annotated[int, Field(description="Deal id", examples=[1])]
     amount_target: Annotated[
-        Decimal, Field(description="Amount in the target currency", examples=["100.00"])
+        JsonDecimal, Field(description="Amount in the target currency", examples=["100.00"])
     ]
     rate: Annotated[
-        Decimal, Field(description="Exchange rate from source to target", examples=["3.0248"])
+        JsonRate, Field(description="Exchange rate from source to target", examples=["3.0248"])
     ]
 
 
@@ -142,11 +163,11 @@ class StatSchema(BaseModel):
             raw = value.strip()
             try:
                 parsed_date = datetime.strptime(raw, "%d.%m.%Y").date()
-                return datetime.combine(parsed_date, time.min)
+                return datetime.combine(parsed_date, time.min, tzinfo=MINSK)
             except ValueError as e:
                 raise ValueError("Date should be in dd.mm.yyyy format") from e
         if isinstance(value, date) and not isinstance(value, datetime):
-            return datetime.combine(value, time.min)
+            return datetime.combine(value, time.min, tzinfo=MINSK)
         return value
 
     @field_validator("end_date", mode="before")
@@ -156,11 +177,11 @@ class StatSchema(BaseModel):
             raw = value.strip()
             try:
                 parsed_date = datetime.strptime(raw, "%d.%m.%Y").date()
-                return datetime.combine(parsed_date, time.max)
+                return datetime.combine(parsed_date, time.max, tzinfo=MINSK)
             except ValueError as e:
                 raise ValueError("Date should be in dd.mm.yyyy format") from e
         if isinstance(value, date) and not isinstance(value, datetime):
-            return datetime.combine(value, time.max)
+            return datetime.combine(value, time.max, tzinfo=MINSK)
         return value
 
     @model_validator(mode="after")
@@ -168,16 +189,6 @@ class StatSchema(BaseModel):
         if self.end_date < self.start_date:
             raise ValueError("end_date should be greater or equal then start_date")
         return self
-
-
-def serialize_decimal(value: Decimal) -> str:
-    return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
-
-
-JsonDecimal = Annotated[
-    Decimal,
-    PlainSerializer(serialize_decimal, return_type=str, when_used="json"),
-]
 
 
 class ResponseStatSchema(BaseModel):
@@ -196,11 +207,11 @@ class ResponsePendingSchema(BaseModel):
 
     id: Annotated[int, Field(description="Deal id", examples=[1])]
     amount_source: Annotated[
-        Decimal, Field(description="Amount in the source currency", examples=["100.00"])
+        JsonDecimal, Field(description="Amount in the source currency", examples=["100.00"])
     ]
     amount_target: Annotated[
-        Decimal, Field(description="Amount in the target currency", examples=["300.00"])
+        JsonDecimal, Field(description="Amount in the target currency", examples=["300.00"])
     ]
     currency_source: Annotated[str, Field(description="Source currency code", examples=["USD"])]
     currency_target: Annotated[str, Field(description="Target currency code", examples=["BYN"])]
-    rate: Annotated[Decimal, Field(description="Exchange rate", examples=["3.0000"])]
+    rate: Annotated[JsonRate, Field(description="Exchange rate", examples=["3.0000"])]
