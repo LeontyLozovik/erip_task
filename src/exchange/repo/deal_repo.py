@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import RowMapping, func, literal, select, union_all
+from sqlalchemy import Numeric, RowMapping, cast, func, literal, select, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,8 +97,8 @@ async def get_stat(data: StatSchema, session: AsyncSession) -> Sequence[RowMappi
     query = (
         select(
             all_deals.c.currency,
-            func.sum(all_deals.c.amount_in).label("total_in"),
-            func.sum(all_deals.c.amount_out).label("total_out"),
+            cast(func.sum(all_deals.c.amount_in), Numeric).label("total_in"),
+            cast(func.sum(all_deals.c.amount_out), Numeric).label("total_out"),
             func.count(func.distinct(all_deals.c.deal_id)).label("deals_count"),
         )
         .group_by(all_deals.c.currency)
